@@ -2,114 +2,57 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Empire Puzzle — Sigil Solver</title>
+<title>Empire Arcade</title>
+<!-- Import a classical font -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&display=swap" rel="stylesheet">
 <style>
   body {
     margin:0; font-family:Georgia,serif; color:#3b2f1e;
     background:linear-gradient(to bottom,#fdf6e3,#c2b280);
     text-align:center;
   }
-  header {padding:10px; border-bottom:3px double #a67c52; background:#fffaf0;}
-  header h1 {margin:0; color:#6b4c2e;}
-  .levels {display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:10px; background:#eadfbd; border-bottom:2px solid #a67c52;}
-  .levels button {padding:8px 12px; font-size:14px; background:#f4e9d8; border:2px solid #a67c52; border-radius:6px; cursor:pointer;}
-  .stage{position:relative; display:inline-block; margin-top:20px;}
-  canvas{background:#fff8e1; border:4px solid #d4af37; box-shadow:0 6px 24px rgba(166,124,82,0.35);}
-  #hud{position:absolute; top:8px; left:50%; transform:translateX(-50%); background:rgba(255,248,220,0.92); border:2px solid #a67c52; padding:6px 10px; font-size:14px;}
-  .overlay{display:none; position:absolute; top:20%; left:50%; transform:translateX(-50%); width:70%; background:#fff8e1; border:3px solid #d4af37; padding:18px; box-shadow:0 0 20px #a67c52;}
+  header {padding:20px; border-bottom:3px double #a67c52; background:#fffaf0;}
+  header h1 {margin:0; color:#6b4c2e; font-size:36px;}
+  .menu {margin-top:30px;}
+  .menu button {
+    display:block; margin:12px auto; padding:14px 28px; font-size:20px;
+    background:#f4e9d8; border:3px solid #a67c52; border-radius:8px; cursor:pointer;
+    width:240px;
+    font-family:'Cinzel', serif; /* Changed font */
+    font-weight:600;
+  }
+  .menu button:hover {background:#fff8e1;}
+  .stage {margin-top:20px; position:relative; display:none;}
+  canvas {
+    background:#fff8e1; border:4px solid #d4af37;
+    box-shadow:0 6px 24px rgba(166,124,82,0.35);
+  }
+  #hud {
+    position:absolute; top:8px; left:50%; transform:translateX(-50%);
+    background:rgba(255,248,220,0.92); border:2px solid #a67c52;
+    padding:6px 10px; font-size:14px; border-radius:6px;
+  }
+  #backBtn {
+    margin-top:10px; padding:8px 16px; font-size:16px;
+    background:#f4e9d8; border:2px solid #a67c52; border-radius:6px; cursor:pointer;
+  }
+  .helmet {
+    position:fixed; bottom:0; right:0; width:300px; opacity:0.95; pointer-events:none;
+  }
 </style>
 </head>
 <body>
-<header><h1>🏛️ Empire Puzzle — Sigil Solver</h1></header>
+<header><h1>🏛️ Empire Arcade</h1></header>
 
-<div class="levels">
-  <button id="tutorialBtn">Tutorial</button>
-  <button data-size="2x2">Mesmerising Mesopotamia</button>
-  <button data-size="2x3">Glorious Greece</button>
-  <button data-size="3x4">Radiant Rome</button>
-  <button data-size="4x4">Majestic Maya</button>
-  <button data-size="4x5">Noble Nile</button>
-  <button data-size="5x4">Imperial Indus</button>
-  <button data-size="5x5">Splendid Sumer</button>
-  <button data-size="6x5">Timeless Tenochtitlan</button>
-  <button data-size="6x6">Eternal Egypt</button>
+<!-- Main Menu -->
+<div class="menu" id="mainMenu">
+  <button onclick="window.location.href='https://tealdragons78.github.io/Empire-Shooter/'">Shooter</button>
+  <button onclick="window.location.href='https://tealdragons78.github.io/Empire-Puzzle/'">Puzzle</button>
+  <button onclick="window.location.href='https://example.com/runner'">Runner</button>
+  <button onclick="window.location.href='https://example.com/strategy'">Strategy</button>
 </div>
 
-<div class="stage">
-  <div id="hud">Matches: 0</div>
-  <canvas id="gameCanvas" width="720" height="480"></canvas>
-  <div id="tutorialBox" class="overlay">
-    <h2>📜 Tutorial</h2>
-    <p>Use Arrow Keys to move the golden frame.<br>Press Space to flip a sigil.</p>
-    <button id="startTutorialGame">Start Tutorial</button>
-    <button id="closeTutorial">Close</button>
-  </div>
-</div>
+<img class="helmet" src="https://static.vecteezy.com/system/resources/previews/049/222/958/non_2x/roman-helmet-with-red-plume-cut-out-stock-png.png">
 
-<script>
-const canvas=document.getElementById("gameCanvas"),ctx=canvas.getContext("2d");
-const hud=document.getElementById("hud"),tutorialBox=document.getElementById("tutorialBox");
-let rows=2,cols=2,grid=[],cursor={x:0,y:0},first=null,matches=0;
-const symbols=["⌘","✦","✹","✪","✧","✺","☀","☽","⚔","⚖","♛","♜","♞","♟","☼","✥","✩","✷","✶","✵"];
-
-function initPuzzle(r,c){
-  rows=r; cols=c; if((rows*cols)%2!==0) cols++;
-  const needed=(rows*cols)/2, chosen=symbols.slice(0,needed);
-  const pairs=[...chosen,...chosen].sort(()=>Math.random()-0.5);
-  grid=[]; for(let rr=0;rr<rows;rr++){const row=[];for(let cc=0;cc<cols;cc++){row.push({sym:pairs[rr*cols+cc],open:false,solved:false});}grid.push(row);}
-  matches=0;cursor={x:0,y:0};first=null;draw();updateHUD();
-}
-function updateHUD(){hud.textContent=`Matches: ${matches}/${(rows*cols)/2}`;}
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawPillars();
-  const cw=(canvas.width-160)/cols,ch=(canvas.height-120)/rows;
-  for(let r=0;r<rows;r++){for(let c=0;c<cols;c++){
-    const cell=grid[r][c],x=80+c*cw,y=60+r*ch;
-    ctx.fillStyle=cell.solved?"#d9f0d6":(cell.open?"#fff":"#eadfbd");
-    ctx.strokeStyle="#a67c52";ctx.fillRect(x,y,cw-12,ch-12);ctx.strokeRect(x,y,cw-12,ch-12);
-    if(cell.open||cell.solved){ctx.fillStyle="#6b4c2e";ctx.font="24px Georgia";ctx.fillText(cell.sym,x+(cw-12)/2-8,y+(ch-12)/2+8);}
-    if(cursor.x===c&&cursor.y===r){ctx.strokeStyle="#d4af37";ctx.lineWidth=3;ctx.strokeRect(x-2,y-2,cw-8,ch-8);}
-  }}}
-function drawPillars(){
-  ctx.fillStyle="#e7e7ef";ctx.fillRect(10,0,40,canvas.height);ctx.fillRect(canvas.width-50,0,40,canvas.height);
-  ctx.strokeStyle="#2e7d32";ctx.lineWidth=5;
-  for(let i=0;i<canvas.height;i+=80){
-    ctx.beginPath();ctx.moveTo(30,i);ctx.bezierCurveTo(16,i+24,42,i+48,22,i+72);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(canvas.width-30,i+36);ctx.bezierCurveTo(canvas.width-16,i+62,canvas.width-42,i+86,canvas.width-22,i+112);ctx.stroke();
-  }
-}
-function selectCell(){
-  const cell=grid[cursor.y][cursor.x]; if(cell.solved||cell.open)return; cell.open=true;
-  if(!first){first=cell;}else{if(first.sym===cell.sym){first.solved=cell.solved=true;matches++;first=null;updateHUD();if(matches===(rows*cols)/2)alert("Gate Unlocked!");}
-  else{const prev=first;setTimeout(()=>{prev.open=cell.open=false;first=null;draw();},600);}}
-  draw();
-}
-document.addEventListener("keydown",e=>{
-  if(tutorialBox.style.display==="block")return;
-  if(e.key==="ArrowLeft")cursor.x=Math.max(0,cursor.x-1);
-  if(e.key==="ArrowRight")cursor.x=Math.min(cols-1,cursor.x+1);
-  if(e.key==="ArrowUp")cursor.y=Math.max(0,cursor.y-1);
-  if(e.key==="ArrowDown")cursor.y=Math.min(rows-1,cursor.y+1);
-  if(e.key===" ")selectCell();
-  draw();
-});
-
-// Tutorial buttons
-document.getElementById("tutorialBtn").onclick=()=>tutorialBox.style.display="block";
-document.getElementById("startTutorialGame").onclick=()=>{tutorialBox.style.display="none";initPuzzle(2,2);};
-document.getElementById("closeTutorial").onclick=()=>tutorialBox.style.display="none";
-
-// Level buttons
-document.querySelectorAll(".levels button[data-size]").forEach(btn=>{
-  btn.onclick=()=>{
-    const [r,c]=btn.getAttribute("data-size").split("x").map(Number);
-    tutorialBox.style.display="none"; initPuzzle(r,c);
-  };
-});
-
-// Start with tutorial open
-tutorialBox.style.display="block";
-</script>
 </body>
 </html>
